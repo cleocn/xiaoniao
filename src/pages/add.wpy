@@ -3,7 +3,7 @@
   <view class="page">
     <view class="page__hd">
         <view class="page__title">{{(_id === '0') ? '添加' : '修改'}}推荐</view>
-         <view class="page__desc">推荐，是一种美德，分享是一种态度。生活就是要有态度和美德。</view>
+        <view class="page__desc">推荐，是一种美德，分享是一种态度。生活就是要有态度和美德。</view>
     </view>
     <view class="page__bd">
         <view class="weui-cells">
@@ -55,7 +55,7 @@
 
          <view class="page__hd page__bd_spacing">
           <button class="weui-btn" type="primary" @tap="save" loading="{{loading}}"  disabled="{{(files.length == 0) || (title.length == 0)}}" > 提交 </button>
-          <button class="weui-btn" type="warn" wx:if="{{_id !== '0' }}" @tap="delete" loading="{{loadingDelete}}"   > 删除 </button>
+          <button class="weui-btn" type="warn" wx:if="{{_id !== '0' }}" @tap="deletetuijian" loading="{{loadingDelete}}"   > 删除 </button>
         </view>
 
     </view>
@@ -158,7 +158,7 @@ export default class Addme extends wepy.page {
         urls: this.files.map((file) => { return this.urlBase + file.path }) // 需要预览的图片http链接列表
       })
     },
-    delete: function() {
+    deletetuijian: function() {
       let self = this
       wx.showModal({
         title: '确认',
