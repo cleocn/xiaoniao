@@ -1,0 +1,193 @@
+<style lang="less">
+@import 'weui.wxss';
+
+page{
+    background-color: #F8F8F8;
+    font-size: 10px;
+    font-family: -apple-system-font,Helvetica Neue,Helvetica,sans-serif;
+}
+.page__hd {
+    padding: 15px;
+}
+.page__bd {
+    padding-bottom: 20px;
+}
+.page__bd_spacing {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+.page__ft{
+    padding-bottom: 10px;
+    text-align: center;
+}
+
+.page__title {
+    text-align: left;
+    font-size: 20px;
+    font-weight: 400;
+}
+
+.page__desc {
+    margin-top: 5px;
+    color: #888888;
+    text-align: left;
+    font-size: 14px;
+}
+
+.container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+</style>
+
+
+<script>
+import wepy from 'wepy'
+import 'wepy-async-function'
+import config from './config'
+
+export default class extends wepy.app {
+  config = {
+    pages: [
+      'pages/test',
+      'pages/add',
+      'pages/show'
+      // 'pages/index'
+    ],
+    window: {
+      backgroundTextStyle: 'light',
+      navigationBarBackgroundColor: '#fff',
+      navigationBarTitleText: 'WeChat',
+      navigationBarTextStyle: 'black',
+      enablePullDownRefresh: true
+    }
+  }
+
+  globalData = {
+    userInfo: null,
+    config: config,
+    login: async () => {
+      const that = this
+      return new Promise(function(resolve, reject) {
+        that.login().then((result) => {
+          console.log(result)
+          resolve('login OK 2')
+        })
+      })
+    }
+  }
+
+  constructor () {
+    super()
+    this.use('requestfix')
+    this.use('promisify')
+  }
+
+  async checkSession () {
+    console.log('checkSession ing')
+    return new Promise(function(resolve, reject) {
+      wx.checkSession({
+        success: function() {
+          // session 未过期，并且在本生命周期一直有效
+          resolve('0')
+        },
+        fail: function() {
+          // 登录态过期
+          resolve('1')
+        }
+      })
+    })
+  }
+  async getcode () {
+    return new Promise(function(resolve, reject) {
+      wx.login({
+        success: function(res) {
+          // console.log(res)
+          if (res.code) {
+            resolve(res.code)
+          } else {
+            console.log('获取用户登录态失败！' + res.errMsg)
+            reject(res.errMsg)
+          }
+        }
+      })
+    })
+  }
+  async getSession(code) {
+    const that = this
+    // console.log('getSession ing')
+    return new Promise(function(resolve, reject) {
+      wepy.request({
+        url: that.globalData.config.apiList.user.wxlogin,
+        data: {
+          code: code
+        }
+      }).then((result) => {
+        if (result && result.data) {
+          that.globalData.session = JSON.parse(result.data)
+          // console.log('getSession', that.globalData.session)
+          wx.setStorageSync('user_session', that.globalData.session)
+          // console.log('getStorageSync:', wx.getStorageSync('user_session'))
+          resolve('getSession OK')
+        } else {
+          reject(new Error('getSession failed.'))
+        }
+      })
+    })
+  }
+  async login() {
+    console.log('login ing')
+    // 初始化缓存
+    await this.initStorage()
+    // 获取用户信息
+    // await this.getUserInfo()
+    const state = await this.checkSession()
+    console.log('state', state)
+    if (state === 1 || !this.globalData.session) { // 没有session'
+      const code = await this.getcode()
+      console.log('code', code)
+      await this.getSession(code)
+      return 'login end OK 新session'
+    } else { // 有session
+      // 不用处理
+      return 'login end OK 已有session'
+    }
+  }
+  async onLaunch() {
+  }
+
+  async getUserInfo(cb) {
+    const that = this
+    if (this.globalData.userInfo) {
+      return this.globalData.userInfo
+    }
+    await wepy.getUserInfo({
+      success (res) {
+        that.globalData.userInfo = res.userInfo
+        return new Promise(function (resolve, reject) {
+          resolve('getUserInfo OK')
+        })
+      }
+    })
+  }
+
+  async initStorage() {
+    console.log('initStorage ing')
+    const that = this
+    const userSession = wx.getStorageSync('user_session')
+    if (userSession && userSession.openid) {
+      that.globalData.session = userSession
+      console.log('that.globalData.session', that.globalData.session)
+    } else {
+      that.globalData.session = null
+      console.log('that.globalData.session set to null')
+    }
+    return ('initStorage OK')
+  }
+}
+</script>

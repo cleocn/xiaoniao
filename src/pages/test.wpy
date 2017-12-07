@@ -1,0 +1,142 @@
+
+<template>
+  <view class="page">
+   <view class="weui-loadmore" wx:if="{{isLoading}}" >
+            <view class="weui-loading"></view>
+            <view class="weui-loadmore__tips">正在加载</view>
+        </view>
+    <!--页头-->
+    <view class="page__hd" wx:if="{{items.length === 0}}">
+        <view class="page__title">欢迎来到小推荐</view>
+         <view class="page__desc">推荐，是一种美德，分享是一种态度。生活就是要有态度和美德。
+           添加了推荐，这里显示的就是二维码。
+         </view>
+    </view>
+   <view class="page__hd" wx:if="{{items.length !== 0}}">
+        <view class="weui-flex">
+          <view class="weui-flex__item">
+          <image style="display:flex;justify-content:center;width:auto !important;" mode="aspectFit"
+            src="{{barcode ? (urlBase + barcode) : ''}}">
+          </image>
+          </view>
+      </view>
+    </view>
+    <!--主体-->
+    <view class="page__bd">
+
+   <view class="weui-cells__title">推荐二维码列表</view>
+        <view class="weui-cells weui-cells_after-title">
+            <radio-group class="radio-group" >
+            <repeat for="{{items}}" key="key" index="index" item="item">
+
+              <view class="weui-cell weui-cell_access" >
+                  <view class="weui-cell__hd" hover-class="weui-cell_active" id="{{item._id}}"  >
+                      <label class="radio" @tap="radioChange" data-barcode="{{item.barcode}}">
+                        <radio value="{{item.title}}" checked="{{item.checked}}"/></radio>
+                        <image wx:if="{{item.images[0] && item.images[0].path}}" src="{{urlBase+item.images[0].path}}" style="margin-right: 5px;vertical-align: middle;width:20px; height: 20px;"></image>
+                        <image wx:if="{{item.images[1] && item.images[1].path}}"  src="{{urlBase+item.images[1].path}}" style="margin-right: 5px;vertical-align: middle;width:20px; height: 20px;"></image>
+                        <image wx:if="{{item.images[2] && item.images[2].path}}"  src="{{urlBase+item.images[2].path}}" style="margin-right: 5px;vertical-align: middle;width:20px; height: 20px;"></image>
+                        {{item.title}}
+                      </label>
+                  </view>
+                  <view class="weui-cell__bd"> </view>
+                    <navigator url="/pages/add?id={{item._id}}" >
+                      <view class="weui-cell__ft weui-cell__ft_in-access" style="vertical-align:middle;"><icon type="info_circle" size="16"></icon></view>
+                    </navigator>
+              </view>
+
+            </repeat>
+        </radio-group>
+        </view>
+    </view>
+ <view class="page__bd page__bd_spacing">
+    <navigator url="/pages/add?id=0"  hover-class="other-navigator-hover">
+      <button class="weui-btn" type="default"> + 添加推荐 </button>
+    </navigator>
+    <!--没有页脚-->
+     </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+
+// 通过继承自wepy.page的类创建页面逻辑
+export default class Test extends wepy.page {
+  // 页面配置
+  config = {
+    navigationBarTitleText: '小推荐'
+  };
+
+  // 可用于页面模板绑定的数据
+  data = {
+    isLoading: false,
+    barcode: '',
+    urlBase: '',
+    items: [
+      // { name: 'test1', checked: true, key: 1 },
+      // { name: 'test2', checked: false, key: 2 }
+    ]
+  };
+
+  // 事件处理函数(集中保存在methods对象中)
+  methods = {
+    radioChange(e) {
+      this.barcode = e.target.dataset.barcode
+      this.$apply()
+      console.log('radioChanged this.barcode:', this.barcode, e.target.dataset.barcode)
+    }
+  };
+
+  async requestMyRecommendeds () {
+    let self = this
+    console.log('requestMyRecommendeds ing openid:', self.$parent.globalData.session.openid)
+    return new Promise(function(resolve, reject) {
+      wepy.request({
+        url: self.$parent.globalData.config.apiList.recommended.get + '?userId=' + self.$parent.globalData.session.openid,
+        fail: function(err) {
+          console.log(err)
+          reject(err)
+        }
+      }).then(function (d) {
+        self.items = d.data
+        if (self.items.length > 0) {
+          self.items[0].checked = true
+          self.barcode = self.items[0].barcode
+        }
+        console.log('self.items loaded', self.items)
+        self.$apply()
+        resolve('load data OK')
+      })
+    })
+  };
+
+  async onPullDownRefresh () {
+    let self = this
+    self.isLoading = true
+    self.$apply()
+    console.log('onPullDownRefresh')
+    const state = await self.requestMyRecommendeds()
+    console.log('load state:', state)
+    wx.stopPullDownRefresh()
+    setTimeout(() => {
+      self.isLoading = false
+      self.$apply()
+    }, 1500)
+    console.log('onPullDownRefresh end')
+  };
+  async onShow () {
+    const state = await this.requestMyRecommendeds()
+    console.log('load state:', state)
+  };
+  // 页面的生命周期函数
+  async onLoad() {
+    let self = this
+    self.urlBase = self.$parent.globalData.config.urlBase
+    let state = await self.$parent.globalData.login()
+    console.log('list state:', state)
+    // console.log(self.$parent.globalData.login)
+    self.$apply()
+  }
+}
+</script>

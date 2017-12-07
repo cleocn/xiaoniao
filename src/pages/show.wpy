@@ -1,0 +1,137 @@
+<template>
+  <view class="page">
+    <view class="page__hd">
+        <view class="page__title">{{title}}</view>
+        <!-- <view class="page__desc">{{title}}</view> -->
+    </view>
+    <view class="page__bd">
+        <view class="weui-article">
+            <!-- <view class="weui-article__h1">大标题</view> -->
+            <view class="weui-article__section">
+                <!-- <view class="weui-article__title">章标题</view> -->
+                <view class="weui-article__section">
+                    <!-- <view class="weui-article__h3">1.1 节标题</view> -->
+                    <view class="weui-article__p">
+                        <view class="weui-cell__bd">
+                          <view class="weui-uploader">
+                              <view class="weui-uploader__bd">
+                                  <view class="weui-uploader__files" id="uploaderFiles">
+                                      <repeat for="{{files}}" key="path" item="item" id="path">
+                                          <view class="weui-uploader__file">
+                                              <image class="weui-uploader__img" @tap="previewImage" data-path="{{item.path}}" data-src="{{ (urlBase + item.path )}}" src="{{item.local || (urlBase + item.path )}}" mode="aspectFill" />
+                                              <view class="weui-uploader__file-content" wx:if="{{item.progress < 1}}">{{item.progress}}</view>
+                                          </view>
+                                      </repeat>
+                                  </view>
+                              </view>
+                          </view>
+                      </view>
+                    </view>
+                    <view class="page__desc">
+                        <!-- <image class="weui-article__img" src="../images/pic_article.png" mode="aspectFit" style="height: 180px" />
+                        <image class="weui-article__img" src="../images/pic_article.png" mode="aspectFit" style="height: 180px" /> -->
+                         {{description}}
+                    </view>
+                </view>
+
+            </view>
+        </view>
+    </view>
+    <view class="weui-footer weui-footer_fixed-bottom">
+            <view class="weui-footer__links">
+                <navigator url="/pages/test" class="weui-footer__link">我要推荐</navigator>
+            </view>
+            <view class="weui-footer__text">Copyright © 2017 小鸟推荐</view>
+        </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+
+// 通过继承自wepy.page的类创建页面逻辑
+export default class Show extends wepy.page {
+  // 页面配置
+  config = {
+    navigationBarTitleText: '小推荐'
+  };
+
+  // 可用于页面模板绑定的数据
+  data = {
+    loading: false,
+    loadingDelete: false,
+    urlBase: '',
+    _id: '0',
+    title: '',
+    description: '',
+    files: [
+      // { name: 'test1', checked: true, key: 1 },
+      // { name: 'test2', checked: false, key: 2 }
+    ]
+  };
+
+  // 事件处理函数(集中保存在methods对象中)
+  methods = {
+    onShareAppMessage: function (res) {
+      if (res.from === 'button') {
+        // 来自页面内转发按钮
+        console.log(res.target)
+      }
+      return {
+        title: this.title + '-小鸟推荐',
+        path: '/page/show?id=' + this._id,
+        success: function(res) {
+          // 转发成功
+        },
+        fail: function(res) {
+          // 转发失败
+        }
+      }
+    },
+    titleInputHandle: (e) => {
+      // console.log(e)
+      this.title = e.detail.value
+      this.$apply()
+    },
+    previewImage: function(e) {
+      console.log('e.currentTarget.id', e.currentTarget.id)
+      console.log('e.target.dataset.src', e.target.dataset.src)
+      wx.previewImage({
+        current: (e.target.dataset.path ? e.target.dataset.src : e.currentTarget.id), // 当前显示图片的http链接
+        urls: this.files.map((file) => { return this.urlBase + file.path }) // 需要预览的图片http链接列表
+      })
+    }
+  }
+// 如果是修改，加载数据
+  async loadData() {
+    let self = this
+    if (self._id === '0') return
+    wepy.request({
+      method: 'GET',
+      url: self.$parent.globalData.config.apiList.recommended.get + '/' + self._id
+    }).then(function (d) {
+      if (d.statusCode === 200) {
+        console.log('get ok:', d)
+        self.title = d.data.data.title
+        self.description = d.data.data.description
+        self.files = d.data.data.images
+        self.$apply()
+      }
+    })
+  }
+  // 页面的生命周期函数
+  async onLoad(options) {
+    let self = this
+    self.urlBase = self.$parent.globalData.config.urlBase
+    self.$apply()
+    const state = await self.$parent.globalData.login()
+    console.log(state)
+    // console.log(self.$parent.globalData.login)
+    if (options.id) {
+      self._id = options.id
+      self.$apply()
+      self.loadData()
+    }
+  }
+}
+</script>
