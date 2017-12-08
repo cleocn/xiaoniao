@@ -3,7 +3,7 @@
   <view class="page">
     <view class="page__hd">
         <view class="page__title">{{(_id === '0') ? '添加' : '修改'}}推荐</view>
-        <view class="page__desc">推荐，是一种美德，分享是一种态度。生活就是要有态度和美德。</view>
+        <view class="page__desc">推荐，是一种美德，分享是一种态度。</view>
     </view>
     <view class="page__bd">
         <view class="weui-cells">
@@ -54,7 +54,7 @@
         </view>
 
          <view class="page__hd page__bd_spacing">
-          <button class="weui-btn" type="primary" @tap="save" loading="{{loading}}"  disabled="{{(files.length == 0) || (title.length == 0)}}" > 提交 </button>
+          <button class="weui-btn" type="primary" @tap="save" loading="{{loading}}"  disabled="{{(files.length == 0) || (title.length == 0)}}" > 保存 </button>
           <button class="weui-btn" type="warn" wx:if="{{_id !== '0' }}" @tap="deletetuijian" loading="{{loadingDelete}}"   > 删除 </button>
         </view>
 
@@ -69,7 +69,7 @@ import wepy from 'wepy'
 export default class Addme extends wepy.page {
   // 页面配置
   config = {
-    navigationBarTitleText: '小推荐'
+    navigationBarTitleText: '小鸟推荐'
   };
 
   // 可用于页面模板绑定的数据
@@ -88,6 +88,22 @@ export default class Addme extends wepy.page {
 
   // 事件处理函数(集中保存在methods对象中)
   methods = {
+    onShareAppMessage: (res) => {
+      if (res.from === 'button') {
+        // 来自页面内转发按钮
+        console.log(res.target)
+      }
+      return {
+        title: this.title + '-小鸟推荐',
+        path: '/page/show?id=' + this._id,
+        success: function(res) {
+          // 转发成功
+        },
+        fail: function(res) {
+          // 转发失败
+        }
+      }
+    },
     titleInputHandle: (e) => {
       // console.log(e)
       this.title = e.detail.value
@@ -186,7 +202,7 @@ export default class Addme extends wepy.page {
                     setTimeout(function () {
                       // 要延时执行的代码
                       wx.reLaunch({
-                        url: '/pages/test'
+                        url: '/pages/list'
                       })
                     }, 2000) // 延迟时间
                   }
@@ -227,23 +243,33 @@ export default class Addme extends wepy.page {
         method: 'POST',
         url: self.$parent.globalData.config.apiList.recommended.save,
         data: data
-      }).then(function (d) {
-        console.log('saved ok:', d)
-        wx.showToast({
-          title: '成功',
-          icon: 'success',
-          duration: 2000,
-          success: () => {
-            self.loading = false
-            self.$apply()
-            setTimeout(function () {
-              // 要延时执行的代码
-              wx.reLaunch({
-                url: '/pages/test'
-              })
-            }, 2000) // 延迟时间
-          }
-        })
+      }).then(function (result) {
+        self.loading = false
+        self.$apply()
+        console.log('save result:', result)
+        if (result.statusCode === 200 && result.data.code === 0) {
+          wx.showToast({
+            title: '成功',
+            icon: 'success',
+            duration: 2000,
+            success: () => {
+              setTimeout(function () {
+                // 要延时执行的代码
+                wx.reLaunch({
+                  url: '/pages/list'
+                })
+              }, 2000) // 延迟时间
+            }
+          })
+        } else {
+          wx.showToast({
+            title: '保存失败',
+            icon: 'success',
+            duration: 2000,
+            success: () => {
+            }
+          })
+        }
       })
     }
   }
@@ -251,34 +277,49 @@ export default class Addme extends wepy.page {
   // 如果是修改，加载数据
   async loadData() {
     let self = this
-    if (self._id === '0') return
-    wepy.request({
-      method: 'GET',
-      url: self.$parent.globalData.config.apiList.recommended.get + '/' + self._id
-    }).then(function (d) {
-      if (d.statusCode === 200) {
-        console.log('get ok:', d)
-        self.title = d.data.data.title
-        self.description = d.data.data.description
-        self.files = d.data.data.images
-        self.$apply()
+    console.log('self._id', self._id)
+    if (self._id === '0' || self._id === 0) {
+      return ('这是新增，不需要加载数据')
+    }
+    return new Promise(function(resolve, reject) {
+      if (self._id === '0' || self._id === 0) {
+        return resolve('这是新增，不需要加载数据')
       }
+      wepy.request({
+        method: 'GET',
+        url: self.$parent.globalData.config.apiList.recommended.get + '/' + self._id
+      }).then(function (res) {
+        console.log('get ok:', res)
+        if (res.statusCode === 200 && res.data.code === 0 && res.data.data) {
+          self.title = res.data.data.title
+          self.description = res.data.data.description
+          self.files = res.data.data.images
+          self.$apply()
+          resolve({code: 0, msg: '加载数据成功'})
+        } else { // 可能被删除
+          console.log('add loadData failed')
+          resolve({code: 500, msg: '加载数据失败'})
+        }
+      })
     })
   }
 
   // 页面的生命周期函数
   async onLoad(options) {
-    console.log('options:', options)
+    console.log('add onLoad options:', options)
     let self = this
     self.urlBase = self.$parent.globalData.config.urlBase
     self.$apply()
-    const state = await self.$parent.globalData.login()
-    console.log(state)
+    try {
+      console.log('add login state', await self.$parent.globalData.login())
+    } catch (error) {
+      console.log('add page login:', error)
+    }
 
     if (options.id) {
       self._id = options.id
       self.$apply()
-      self.loadData()
+      console.log('loadData result:', await self.loadData())
     }
     // console.log(self.$parent.globalData.login)
   }

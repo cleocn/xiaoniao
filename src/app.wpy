@@ -54,7 +54,7 @@ import config from './config'
 export default class extends wepy.app {
   config = {
     pages: [
-      'pages/test',
+      'pages/list',
       'pages/add',
       'pages/show'
       // 'pages/index'
@@ -71,13 +71,15 @@ export default class extends wepy.app {
   globalData = {
     userInfo: null,
     config: config,
+    // login: this.login
     login: async () => {
       const that = this
-      return new Promise(function(resolve, reject) {
-        that.login().then((result) => {
-          console.log(result)
-          resolve('login OK 2')
-        })
+      return new Promise(async function(resolve, reject) {
+        try {
+          resolve(await that.login())
+        } catch (error) {
+          reject(error)
+        }
       })
     }
   }
@@ -103,6 +105,7 @@ export default class extends wepy.app {
       })
     })
   }
+
   async getcode () {
     return new Promise(function(resolve, reject) {
       wx.login({
@@ -118,44 +121,51 @@ export default class extends wepy.app {
       })
     })
   }
+
   async getSession(code) {
     const that = this
-    // console.log('getSession ing')
     return new Promise(function(resolve, reject) {
       wepy.request({
         url: that.globalData.config.apiList.user.wxlogin,
         data: {
           code: code
         }
-      }).then((result) => {
+      }).then(function (result) {
         if (result && result.data) {
           that.globalData.session = JSON.parse(result.data)
-          // console.log('getSession', that.globalData.session)
+          // 保存到storage
           wx.setStorageSync('user_session', that.globalData.session)
-          // console.log('getStorageSync:', wx.getStorageSync('user_session'))
-          resolve('getSession OK')
+          console.log('getSession', 0)
+          resolve('0') // { code: 0, msg: 'getSession OK' }
         } else {
-          reject(new Error('getSession failed.'))
+          console.log('getSession', 500)
+          resolve('500') // { code: 500, msg: 'getSession failed.' }
         }
       })
     })
   }
+
   async login() {
     console.log('login ing')
-    // 初始化缓存
-    await this.initStorage()
-    // 获取用户信息
-    // await this.getUserInfo()
-    const state = await this.checkSession()
-    console.log('state', state)
-    if (state === 1 || !this.globalData.session) { // 没有session'
-      const code = await this.getcode()
-      console.log('code', code)
-      await this.getSession(code)
-      return 'login end OK 新session'
-    } else { // 有session
-      // 不用处理
-      return 'login end OK 已有session'
+    const that = this
+    try {
+      // 初始化缓存
+      console.log(await that.initStorage())
+      const state = await that.checkSession()
+      if (state === 1 || !that.globalData.session) { // 没有session'
+        const code = await that.getcode()
+        console.log('login getSession:', await that.getSession(code))
+        console.log('login end OK 新session with code : ', code)
+        // 获取用户信息
+        console.log('login getUserInfo:', await that.getUserInfo())
+      } else { // 有session
+        // 不用处理
+        console.log('login end OK 已有session', that.globalData.session, that.globalData.userInfo)
+      }
+      return ('login success.')
+    } catch (err) {
+      console.log('login error here:', err)
+      return (err)
     }
   }
   async onLaunch() {
@@ -163,30 +173,23 @@ export default class extends wepy.app {
 
   async getUserInfo(cb) {
     const that = this
-    if (this.globalData.userInfo) {
-      return this.globalData.userInfo
+    try {
+      await wepy.login()
+      that.globalData.userInfo = (await wepy.getUserInfo()).userInfo
+      wx.setStorageSync('userInfo', that.globalData.userInfo)
+      return (that.globalData.userInfo)
+    } catch (err) {
+      console.log('getUserInfo error:', err)
+      return (err)
     }
-    await wepy.getUserInfo({
-      success (res) {
-        that.globalData.userInfo = res.userInfo
-        return new Promise(function (resolve, reject) {
-          resolve('getUserInfo OK')
-        })
-      }
-    })
   }
 
   async initStorage() {
     console.log('initStorage ing')
     const that = this
-    const userSession = wx.getStorageSync('user_session')
-    if (userSession && userSession.openid) {
-      that.globalData.session = userSession
-      console.log('that.globalData.session', that.globalData.session)
-    } else {
-      that.globalData.session = null
-      console.log('that.globalData.session set to null')
-    }
+    that.globalData.session = wx.getStorageSync('user_session')
+    that.globalData.userInfo = wx.getStorageSync('userInfo')
+    console.log('load Storage:', that.globalData.session, that.globalData.userInfo)
     return ('initStorage OK')
   }
 }

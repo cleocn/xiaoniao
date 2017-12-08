@@ -1,5 +1,6 @@
 <template>
   <view class="page">
+    <view class="" wx:if="{{!loadFailed}}" >
     <view class="page__hd">
         <view class="page__title">{{title}}</view>
         <!-- <view class="page__desc">{{title}}</view> -->
@@ -37,13 +38,32 @@
             </view>
         </view>
     </view>
-    <view class="weui-footer weui-footer_fixed-bottom">
+ </view>
+
+    <view class="weui-msg" wx:if="{{loadFailed}}">
+        <view class="weui-msg__icon-area">
+            <icon type="warn" size="93"></icon>
+        </view>
+        <view class="weui-msg__text-area">
+            <view class="weui-msg__title">操作失败</view>
+            <view class="weui-msg__desc">您要找的内容不见啦，可能是用户删除了吧. 点击<navigator url="/pages/add" class="weui-msg__link">这里</navigator>我也来推荐。</view>
+        </view>
+        <view class="weui-msg__opr-area">
+            <view class="weui-btn-area">
+                <button class="weui-btn" type="primary" @tap="refresh" >刷新试试</button>
+                <button class="weui-btn" type="default" @tap="gohome" >去到首页</button>
+            </view>
+        </view>
+
+    </view>
+
+     <view class="weui-footer weui-footer_fixed-bottom">
             <view class="weui-footer__links">
-                <navigator url="/pages/test" class="weui-footer__link">我要推荐</navigator>
+                <navigator url="/pages/list" class="weui-footer__link">我也去推荐</navigator>
             </view>
             <view class="weui-footer__text">Copyright © 2017 小鸟推荐</view>
         </view>
-  </view>
+    </view>
 </template>
 
 <script>
@@ -53,11 +73,12 @@ import wepy from 'wepy'
 export default class Show extends wepy.page {
   // 页面配置
   config = {
-    navigationBarTitleText: '小推荐'
+    navigationBarTitleText: '小鸟推荐'
   };
 
   // 可用于页面模板绑定的数据
   data = {
+    loadFailed: false,
     loading: false,
     loadingDelete: false,
     urlBase: '',
@@ -88,10 +109,11 @@ export default class Show extends wepy.page {
         }
       }
     },
-    titleInputHandle: (e) => {
-      // console.log(e)
-      this.title = e.detail.value
-      this.$apply()
+    refresh: (e) => {
+      this.loadData()
+    },
+    gohome: (e) => {
+      wx.reLaunch({url: '/pages/list'})
     },
     previewImage: function(e) {
       console.log('e.currentTarget.id', e.currentTarget.id)
@@ -109,12 +131,16 @@ export default class Show extends wepy.page {
     wepy.request({
       method: 'GET',
       url: self.$parent.globalData.config.apiList.recommended.get + '/' + self._id
-    }).then(function (d) {
-      if (d.statusCode === 200) {
-        console.log('get ok:', d)
-        self.title = d.data.data.title
-        self.description = d.data.data.description
-        self.files = d.data.data.images
+    }).then(function (result) {
+      console.log('loadData result:', result)
+      if (result.statusCode === 200 && result.data.code === 0 && result.data.data !== null) {
+        self.title = result.data.data.title
+        self.description = result.data.data.description
+        self.files = result.data.data.images
+        self.loadFailed = false
+        self.$apply()
+      } else {
+        self.loadFailed = true
         self.$apply()
       }
     })
