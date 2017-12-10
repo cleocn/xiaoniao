@@ -95,7 +95,7 @@ export default class Addme extends wepy.page {
       }
       return {
         title: this.title + '-小鸟推荐',
-        path: '/page/show?id=' + this._id,
+        path: '/pages/show?id=' + this._id,
         success: function(res) {
           // 转发成功
         },

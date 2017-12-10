@@ -51,6 +51,8 @@ import wepy from 'wepy'
 import 'wepy-async-function'
 import config from './config'
 
+import Raven from './raven.min'
+
 export default class extends wepy.app {
   config = {
     pages: [
@@ -88,6 +90,28 @@ export default class extends wepy.app {
     super()
     this.use('requestfix')
     this.use('promisify')
+    this.intercept('request', {
+      config (p) {
+        p.timestamp = +new Date()
+        return p
+      },
+      success (p) {
+        console.log('request success')
+        Raven.captureBreadcrumb({
+          category: 'ajax',
+          data: {
+            method: 'get',
+            url: 'weapp.showcase.page/1.0.0/get',
+            status_code: 200
+          }
+        })
+        return p
+      },
+      fail (p) {
+        console.log('request error')
+        return p
+      }
+    })
   }
 
   async checkSession () {
@@ -146,6 +170,13 @@ export default class extends wepy.app {
   }
 
   async login() {
+    console.log('Raven config install')
+    Raven
+      .config('http://abbbfaf9167e46f88798d3e9cb6429be@139.199.9.175:9000/5')
+      .install(function (err, initialErr, eventId) {
+        console.log('Raven install error:', err)
+      })
+
     console.log('login ing')
     const that = this
     try {
@@ -168,8 +199,6 @@ export default class extends wepy.app {
       return (err)
     }
   }
-  async onLaunch() {
-  }
 
   async getUserInfo(cb) {
     const that = this
@@ -191,6 +220,19 @@ export default class extends wepy.app {
     that.globalData.userInfo = wx.getStorageSync('userInfo')
     console.log('load Storage:', that.globalData.session, that.globalData.userInfo)
     return ('initStorage OK')
+  }
+
+  async onLaunch() {
+    // throw new Error('test')
+    console.log('Raven:', Raven)
+    Raven.captureException(new Error('test test'))
+  }
+
+  onError(msg) {
+    console.log('Raven.captureException')
+    Raven.captureException(msg, {
+      level: 'error'
+    })
   }
 }
 </script>

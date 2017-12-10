@@ -19,7 +19,7 @@
                                   <view class="weui-uploader__files" id="uploaderFiles">
                                       <repeat for="{{files}}" key="path" item="item" id="path">
                                           <view class="weui-uploader__file">
-                                              <image class="weui-uploader__img" @tap="previewImage" data-path="{{item.path}}" data-src="{{ (urlBase + item.path )}}" src="{{item.local || (urlBase + item.path )}}" mode="aspectFill" />
+                                              <image class="weui-uploader__img" @tap="previewImage" data-path="{{item.path}}" data-src="{{ (cdnDomain + item.path )}}" src="{{item.local || (urlBase + item.path )}}" mode="aspectFill" />
                                               <view class="weui-uploader__file-content" wx:if="{{item.progress < 1}}">{{item.progress}}</view>
                                           </view>
                                       </repeat>
@@ -82,6 +82,7 @@ export default class Show extends wepy.page {
     loading: false,
     loadingDelete: false,
     urlBase: '',
+    cdnDomain: '',
     _id: '0',
     title: '',
     description: '',
@@ -100,7 +101,7 @@ export default class Show extends wepy.page {
       }
       return {
         title: this.title + '-小鸟推荐',
-        path: '/page/show?id=' + this._id,
+        path: '/pages/show?id=' + this._id,
         success: function(res) {
           // 转发成功
         },
@@ -149,6 +150,7 @@ export default class Show extends wepy.page {
   async onLoad(options) {
     let self = this
     self.urlBase = self.$parent.globalData.config.urlBase
+    self.cdnDomain = self.$parent.globalData.config.cdnDomain
     self.$apply()
     const state = await self.$parent.globalData.login()
     console.log(state)
